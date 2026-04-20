@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preparación de Bordes — EJERCICIOS Y ACTIVIDADES INTERACTIVAS</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="header">
+      <h1>EJERCICIOS Y ACTIVIDADES INTERACTIVAS</h1>
+      <p>Preparación de Bordes en Soldadura · ISO 9692-1</p>
+    </header>
+
+    <main class="main-content">
+
+      <div class="student-info-bar">
+        <input type="text" id="studentName" placeholder="Nombres y Apellidos..." required>
+        <select id="studentCourse" required>
+          <option value="" disabled selected>Selecciona tu curso…</option>
+          <option value="1º GM Soldadura">1º GM Soldadura</option>
+          <option value="2º GM Soldadura">2º GM Soldadura</option>
+          <option value="1º GS Construcciones Metálicas">1º GS Const. Metálicas</option>
+          <option value="2º GS Construcciones Metálicas">2º GS Const. Metálicas</option>
+        </select>
+        <select id="studentModule" required disabled>
+          <option value="" disabled selected>Selecciona primero un curso…</option>
+        </select>
+        <input type="date" id="examDate" required>
+      </div>
+      <p id="dateWarning" class="date-warning" style="display:none;">⚠️ La fecha seleccionada no es la de hoy. ¿Estás seguro?</p>
+
+      <section id="studyPanel">
+        <div class="panel-header">
+          <h2>Fase 1 · Tipos de Preparación de Bordes</h2>
+          <p>Selecciona cada tipo para ver el perfil 3D y su teoría normativa. Arrastra para rotar el modelo.</p>
+        </div>
+        <div class="study-grid">
+          <nav class="study-nav">
+            <button class="nav-btn active" data-type="recto">Borde Recto (I)</button>
+            <button class="nav-btn" data-type="v">Bisel en V</button>
+            <button class="nav-btn" data-type="x">Bisel en X (Doble V)</button>
+            <button class="nav-btn" data-type="u">Bisel en U</button>
+            <button class="nav-btn" data-type="j">Bisel en J</button>
+            <button class="nav-btn" data-type="k">Bisel en K</button>
+          </nav>
+          <div class="study-viewer">
+            <div id="studyCanvas" class="canvas-container"></div>
+            <div class="info-box">
+              <div class="info-badge" id="infoBadge"></div>
+              <h3 id="infoTitle"></h3>
+              <div id="infoParams" class="params-row"></div>
+              <p id="infoDesc"></p>
+              <div id="infoTheory" class="theory-block"></div>
+            </div>
+          </div>
+        </div>
+        <div class="start-exam-container">
+          <p class="warning-text">⚠️ Al comenzar la prueba, la teoría desaparecerá. Tendrás 25 segundos por pregunta.</p>
+          <button id="btnStartExam" class="btn-primary">Comenzar Prueba</button>
+        </div>
+      </section>
+
+      <section id="examPanel" style="display:none;">
+        <div class="panel-header">
+          <div class="exam-header-row">
+            <div>
+              <h2>Fase 2 · Prueba Práctica</h2>
+              <p>Pregunta <span id="currentQuestionNum">1</span> de <span id="totalQuestions">6</span></p>
+            </div>
+            <div id="timerContainer" class="timer-box">⏱ <span id="examTimer">25</span>s</div>
+          </div>
+          <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+        </div>
+        <div class="exam-grid">
+          <div id="examCanvas" class="canvas-container exam-canvas"></div>
+          <div class="exam-controls">
+            <p class="exam-question" id="examQuestion"></p>
+            <div class="options-grid" id="examOptions"></div>
+            <div id="answerFeedback" class="answer-feedback" style="display:none;"></div>
+            <button id="btnNextQuestion" class="btn-secondary" style="display:none; margin-top:1rem; width:100%;">Siguiente →</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <div id="evaluationPanel" class="eval-panel" style="display:none;">
+      <div class="score-ring">
+        <svg viewBox="0 0 120 120" width="120" height="120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#e2e8f0" stroke-width="10"/>
+          <circle id="scoreArc" cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="10"
+            stroke-linecap="round" stroke-dasharray="0 327" transform="rotate(-90 60 60)"
+            style="transition: stroke-dasharray 1.2s ease;"/>
+        </svg>
+        <div class="score-value" id="scoreCircle">--</div>
+      </div>
+      <h2 id="modalTitle">Resultados</h2>
+      <p id="modalSummary"></p>
+      <button id="btnEnviarDrive" class="btn-success">Enviar a Google Drive</button>
+      <p id="enviarDriveStatus" style="display:none; font-weight:600; margin-top:.5rem; text-align:center;"></p>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
