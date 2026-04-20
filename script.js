@@ -296,6 +296,7 @@ document.getElementById('btnStartExam').addEventListener('click', () => {
     document.getElementById(id).style.borderColor = !v ? 'red' : '#cbd5e1';
     return v;
   });
+  
   if(!isOk) {
     const btn = document.getElementById('btnStartExam');
     const oldText = btn.textContent;
@@ -304,26 +305,38 @@ document.getElementById('btnStartExam').addEventListener('click', () => {
     return;
   }
 
-  document.getElementById('studyPanel').remove(); // Anti-cheat physical dom removal
-  document.getElementById('examPanel').style.display = 'block';
-  if (!examApp) examApp = new App3D('examCanvas');
-
-  let allQ = [];
-  Object.keys(bordsData).forEach(k => {
-    bordsData[k].questions.forEach(q => {
-      allQ.push({ ...q, type: k });
-    });
-  });
-  examQuestions = allQ.sort(()=>Math.random()-0.5).slice(0, 6);
-  scoreTotal = examQuestions.length;
-  document.getElementById('totalQuestions').textContent = scoreTotal;
+  const studyP = document.getElementById('studyPanel');
+  if(studyP) studyP.remove(); // Anti-cheat removal
   
-  loadNextQuestion();
+  const examP = document.getElementById('examPanel');
+  examP.style.display = 'block';
+
+  // SITES PROOF: Esperar a que el DOM compute el tamaño del nuevo panel antes de iniciar Three.js
+  setTimeout(() => {
+    if (!examApp) {
+      try {
+        examApp = new App3D('examCanvas');
+      } catch(e) { console.error("Error 3D:", e); }
+    }
+
+    let allQ = [];
+    Object.keys(bordsData).forEach(k => {
+      bordsData[k].questions.forEach(q => {
+        allQ.push({ ...q, type: k });
+      });
+    });
+    examQuestions = allQ.sort(()=>Math.random()-0.5).slice(0, 6);
+    scoreTotal = examQuestions.length;
+    document.getElementById('totalQuestions').textContent = scoreTotal;
+    
+    loadNextQuestion();
+  }, 50);
 });
 
 function loadNextQuestion() {
   const q = examQuestions[currentQIdx];
-  examApp.loadModel(q.type);
+  if(examApp) examApp.loadModel(q.type);
+  
   document.getElementById('currentQuestionNum').textContent = currentQIdx + 1;
   document.getElementById('examQuestion').textContent = q.text;
   document.getElementById('progressBar').style.width = ((currentQIdx/scoreTotal)*100)+'%';
@@ -387,18 +400,18 @@ document.getElementById('btnNextQuestion').addEventListener('click', () => {
 });
 
 function finishVal() {
-  document.querySelector('.exam-controls').style.display = 'none';
+  document.querySelector('.exam-grid').style.display = 'none';
+  document.querySelector('.panel-header').style.display = 'none';
   document.getElementById('evaluationPanel').style.display = 'block';
   
   const finalScore = (scoreRaw / scoreTotal) * 10;
-  document.getElementById('progressBar').style.width = '100%';
   
   const arc = document.getElementById('scoreArc');
   const maxDash = 327;
   const dashVal = maxDash - (maxDash * (finalScore/10));
   setTimeout(()=> {
     arc.style.strokeDasharray = `${maxDash - dashVal} 327`;
-    if(finalScore<5) arc.style.stroke = 'var(--error)';
+    if(finalScore<5) arc.style.stroke = '#ef4444'; // Red
   }, 100);
 
   document.getElementById('scoreCircle').textContent = finalScore.toFixed(1) + '/10';
@@ -410,36 +423,32 @@ function finishVal() {
 document.getElementById('btnEnviarDrive').addEventListener('click', async () => {
     const btn = document.getElementById('btnEnviarDrive');
     const status = document.getElementById('enviarDriveStatus');
-    const rawName = document.getElementById('studentName').value;
-    const cleanName = (rawName || 'alumno').trim().replace(/\s+/g, '_');
-    const nf = rawName + ' - ' + document.getElementById('studentCourse').value + ' (' + document.getElementById('studentModule').value + ')';
-    const pdfFilename = `PrepBordes_${cleanName}.pdf`;
     
-    document.querySelector('.app-container').style.pointerEvents = 'none';
-    document.getElementById('evaluationPanel').style.pointerEvents = 'auto'; 
-    btn.disabled = true; btn.textContent = 'Generando certificado...';
-    status.style.display = 'block'; status.textContent = 'Procesando...';
+    // Obtenemos los datos tal cual están en los inputs
+    const nombreAlumno = document.getElementById('studentName').value;
+    const cleanNameForFile = (nombreAlumno || 'alumno').trim().replace(/\s+/g, '_');
+    const pdfFilename = `PrepBordes_${cleanNameForFile}.pdf`;
+    
+    btn.disabled = true; 
+    btn.textContent = 'Generando certificado...';
+    status.style.display = 'block'; 
+    status.textContent = 'Procesando...';
 
     try {
         // 1. GENERAR PDF
         const pdfResult = generarPDF();
         
-        // 2. DESCARGA LOCAL
-        const url = URL.createObjectURL(pdfResult.blob);
-        const a = document.createElement('a'); 
-        a.href = url; a.download = pdfFilename; a.click();
-        URL.revokeObjectURL(url);
-        
+        // 2. ENVÍO A DRIVE (Siempre primero para asegurar datos del profesor)
         btn.textContent = 'Enviando...';
-        status.textContent = 'Subiendo al expediente (Drive)...';
+        status.textContent = 'Subiendo al expediente del profesor...';
 
-        // 3. ENVÍO A DRIVE
         await fetch(GAS_URL, {
-            method: 'POST', mode: 'no-cors',
+            method: 'POST', 
+            mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 fecha: document.getElementById('examDate').value,
-                nombre: nf,
+                nombre: nombreAlumno,
                 modulo: "SAP",
                 tipo: "Preparación de Bordes",
                 ejercicio: "SAP - Preparación de Bordes",
@@ -448,25 +457,39 @@ document.getElementById('btnEnviarDrive').addEventListener('click', async () => 
                 pdf: pdfResult.base64
             })
         });
+
+        // 3. DESCARGA LOCAL (Blindado para evitar que el bloqueo de Sites detenga el reporte de éxito)
+        try {
+            const url = URL.createObjectURL(pdfResult.blob);
+            const a = document.createElement('a'); 
+            a.href = url; a.download = pdfFilename; 
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (downloadErr) {
+            console.warn("Descarga local bloqueada por Google Sites.");
+        }
+
         btn.textContent = '¡Completado!';
-        status.style.color = '#15803d'; // green-700
-        status.textContent = '✅ PDF descargado en tu PC y subido al Profesor.';
+        status.style.color = '#15803d';
+        status.textContent = '✅ Datos guardados y PDF enviado correctamente.';
+
     } catch(e) {
-        btn.disabled = false; btn.textContent = 'Reintentar envío';
-        status.style.color = '#dc2626'; // red-600
-        status.textContent = '❌ Hubo un error de conexión.';
-        document.querySelector('.app-container').style.pointerEvents = 'auto';
-        console.error("API error:", e);
+        btn.disabled = false; 
+        btn.textContent = 'Reintentar envío';
+        status.style.color = '#dc2626';
+        status.textContent = '❌ Error de red al enviar.';
     }
 });
 
 function generarPDF() {
   const { jsPDF } = window.jspdf;
-  if (!jsPDF) throw new Error('jsPDF no inicializado. Asegúrate de tener conexión a Internet.');
+  if (!jsPDF) throw new Error('jsPDF no inicializado');
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
   const PW = doc.internal.pageSize.getWidth();
   
-  doc.setFillColor(30, 58, 138); // #1e3a8a - Azul profundo
+  doc.setFillColor(30, 58, 138); 
   doc.rect(0, 0, PW, 35, 'F');
   
   doc.setTextColor(255, 255, 255);
@@ -477,10 +500,9 @@ function generarPDF() {
   doc.setFont('helvetica', 'normal');
   doc.text('Sistema de Evaluación Interactiva · ISO 9692-1', PW / 2, 25, { align: 'center' });
   
-  doc.setTextColor(30, 41, 59); // text-slate-800
+  doc.setTextColor(30, 41, 59); 
   let y = 50;
   
-  // Datos personales
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.text('Acreditación del Alumno', 20, y); y+=10;
@@ -495,31 +517,27 @@ function generarPDF() {
   doc.text(`Nombre: ${nf}`, 25, y); y+=8;
   doc.text(`Curso: ${curs}`, 25, y); y+=8;
   doc.text(`Módulo: ${mod}`, 25, y); y+=8;
-  doc.text(`Fecha de la prueba: ${fech}`, 25, y); y+=20;
+  doc.text(`Fecha: ${fech}`, 25, y); y+=20;
   
-  doc.line(20, y, PW - 20, y); y+=15; // separador
+  doc.line(20, y, PW - 20, y); y+=15; 
   
-  // Calificación
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('Resultado Técnico', 20, y); y+=15;
+  doc.text('Resultado de la Prueba', 20, y); y+=15;
   
   const finalScore = ((scoreRaw / scoreTotal) * 10).toFixed(1);
-  const color = finalScore >= 5 ? [21, 128, 61] : [220, 38, 38]; // verde o rojo
+  const color = finalScore >= 5 ? [21, 128, 61] : [220, 38, 38]; 
   
   doc.setFillColor(color[0], color[1], color[2]);
-  doc.rect(PW/2 - 35, y, 70, 25, 'F'); // Caja grande para la nota
+  doc.rect(PW/2 - 35, y, 70, 25, 'F'); 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(26);
   doc.text(`${finalScore} / 10`, PW/2, y + 17, { align: 'center' });
   
-  // Disclaimer
   doc.setTextColor(100, 116, 139);
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'italic');
-  doc.text('Certificado con validez únicamente para el expediente interno del módulo.', PW / 2, 280, { align: 'center' });
+  doc.text('Documento generado automáticamente para el expediente del módulo SAP.', PW / 2, 280, { align: 'center' });
   
-  // Extracción robusta anti-corrupción
   const blob = doc.output('blob');
   const dataUri = doc.output('datauristring');
   const base64 = dataUri.split('base64,')[1];
