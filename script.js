@@ -1,4 +1,4 @@
-const GAS_URL = "https://script.google.com/a/macros/iesremedios.es/s/AKfycbxkAcI4NpM1m1rH9YUhNUHUNmt5x9WhPN7q51WeAecqGG4-QkY6_isCqROfoWQjbo3E/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzDJni77NAjWJng-ogPCMhr3QEHKKkgi7I2Vvegqamwb1udpgGeCamGO9bjuNrY4sE4/exec";
 const metalMat = new THREE.MeshStandardMaterial({ 
   color: 0x8a9ba8, 
   metalness: 0.9, 
@@ -418,7 +418,9 @@ document.getElementById('btnEnviarDrive').addEventListener('click', async () => 
             body: JSON.stringify({
                 fecha: document.getElementById('examDate').value,
                 nombre: nf,
-                ejercicio: "3D Preparación de Bordes",
+                modulo: "SAP",
+                tipo: "Preparación de Bordes",
+                ejercicio: "SAP - Preparación de Bordes",
                 nota: ((scoreRaw / scoreTotal) * 10).toFixed(1)
             })
         });
