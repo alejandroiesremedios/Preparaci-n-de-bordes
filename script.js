@@ -297,7 +297,10 @@ document.getElementById('btnStartExam').addEventListener('click', () => {
     return v;
   });
   if(!isOk) {
-    alert("Por favor, rellena tu nombre y selecciona el curso y módulo antes de comenzar.");
+    const btn = document.getElementById('btnStartExam');
+    const oldText = btn.textContent;
+    btn.textContent = "❌ Rellena todos tus datos arriba";
+    setTimeout(() => btn.textContent = oldText, 3000);
     return;
   }
 
