@@ -296,7 +296,10 @@ document.getElementById('btnStartExam').addEventListener('click', () => {
     document.getElementById(id).style.borderColor = !v ? 'red' : '#cbd5e1';
     return v;
   });
-  if(!isOk) return;
+  if(!isOk) {
+    alert("Por favor, rellena tu nombre y selecciona el curso y módulo antes de comenzar.");
+    return;
+  }
 
   document.getElementById('studyPanel').remove(); // Anti-cheat physical dom removal
   document.getElementById('examPanel').style.display = 'block';
@@ -319,7 +322,7 @@ function loadNextQuestion() {
   const q = examQuestions[currentQIdx];
   examApp.loadModel(q.type);
   document.getElementById('currentQuestionNum').textContent = currentQIdx + 1;
-  document.querySelector('.exam-controls h3').textContent = q.text;
+  document.getElementById('examQuestion').textContent = q.text;
   document.getElementById('progressBar').style.width = ((currentQIdx/scoreTotal)*100)+'%';
   
   const opts = document.getElementById('examOptions');
@@ -404,14 +407,30 @@ function finishVal() {
 document.getElementById('btnEnviarDrive').addEventListener('click', async () => {
     const btn = document.getElementById('btnEnviarDrive');
     const status = document.getElementById('enviarDriveStatus');
-    const nf = document.getElementById('studentName').value + ' - ' + document.getElementById('studentCourse').value + ' (' + document.getElementById('studentModule').value + ')';
+    const rawName = document.getElementById('studentName').value;
+    const cleanName = (rawName || 'alumno').trim().replace(/\s+/g, '_');
+    const nf = rawName + ' - ' + document.getElementById('studentCourse').value + ' (' + document.getElementById('studentModule').value + ')';
+    const pdfFilename = `PrepBordes_${cleanName}.pdf`;
     
     document.querySelector('.app-container').style.pointerEvents = 'none';
     document.getElementById('evaluationPanel').style.pointerEvents = 'auto'; 
-    btn.disabled = true; btn.textContent = 'Enviando...';
-    status.style.display = 'block'; status.textContent = 'Conectando con Drive...';
+    btn.disabled = true; btn.textContent = 'Generando certificado...';
+    status.style.display = 'block'; status.textContent = 'Procesando...';
 
     try {
+        // 1. GENERAR PDF
+        const pdfResult = generarPDF();
+        
+        // 2. DESCARGA LOCAL
+        const url = URL.createObjectURL(pdfResult.blob);
+        const a = document.createElement('a'); 
+        a.href = url; a.download = pdfFilename; a.click();
+        URL.revokeObjectURL(url);
+        
+        btn.textContent = 'Enviando...';
+        status.textContent = 'Subiendo al expediente (Drive)...';
+
+        // 3. ENVÍO A DRIVE
         await fetch(GAS_URL, {
             method: 'POST', mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
@@ -421,15 +440,86 @@ document.getElementById('btnEnviarDrive').addEventListener('click', async () => 
                 modulo: "SAP",
                 tipo: "Preparación de Bordes",
                 ejercicio: "SAP - Preparación de Bordes",
-                nota: ((scoreRaw / scoreTotal) * 10).toFixed(1)
+                nota: ((scoreRaw / scoreTotal) * 10).toFixed(1),
+                pdfNombre: pdfFilename,
+                pdf: pdfResult.base64
             })
         });
-        btn.textContent = '¡Enviado!';
-        status.style.color = '#f97316';
-        status.textContent = '✅ Puntos guardados en el historial.';
+        btn.textContent = '¡Completado!';
+        status.style.color = '#15803d'; // green-700
+        status.textContent = '✅ PDF descargado en tu PC y subido al Profesor.';
     } catch(e) {
-        btn.disabled = false; btn.textContent = 'Enviar Módulo';
-        status.style.color = '#ef4444'; status.textContent = '❌ Error de red';
+        btn.disabled = false; btn.textContent = 'Reintentar envío';
+        status.style.color = '#dc2626'; // red-600
+        status.textContent = '❌ Hubo un error de conexión.';
         document.querySelector('.app-container').style.pointerEvents = 'auto';
+        console.error("API error:", e);
     }
 });
+
+function generarPDF() {
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) throw new Error('jsPDF no inicializado. Asegúrate de tener conexión a Internet.');
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+  const PW = doc.internal.pageSize.getWidth();
+  
+  doc.setFillColor(30, 58, 138); // #1e3a8a - Azul profundo
+  doc.rect(0, 0, PW, 35, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('EVALUACIÓN: PREPARACIÓN DE BORDES', PW / 2, 16, { align: 'center' });
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Sistema de Evaluación Interactiva · ISO 9692-1', PW / 2, 25, { align: 'center' });
+  
+  doc.setTextColor(30, 41, 59); // text-slate-800
+  let y = 50;
+  
+  // Datos personales
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Acreditación del Alumno', 20, y); y+=10;
+  
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  const nf = document.getElementById('studentName').value;
+  const curs = document.getElementById('studentCourse').value;
+  const mod = document.getElementById('studentModule').value;
+  const fech = document.getElementById('examDate').value;
+  
+  doc.text(`Nombre: ${nf}`, 25, y); y+=8;
+  doc.text(`Curso: ${curs}`, 25, y); y+=8;
+  doc.text(`Módulo: ${mod}`, 25, y); y+=8;
+  doc.text(`Fecha de la prueba: ${fech}`, 25, y); y+=20;
+  
+  doc.line(20, y, PW - 20, y); y+=15; // separador
+  
+  // Calificación
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Resultado Técnico', 20, y); y+=15;
+  
+  const finalScore = ((scoreRaw / scoreTotal) * 10).toFixed(1);
+  const color = finalScore >= 5 ? [21, 128, 61] : [220, 38, 38]; // verde o rojo
+  
+  doc.setFillColor(color[0], color[1], color[2]);
+  doc.rect(PW/2 - 35, y, 70, 25, 'F'); // Caja grande para la nota
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(26);
+  doc.text(`${finalScore} / 10`, PW/2, y + 17, { align: 'center' });
+  
+  // Disclaimer
+  doc.setTextColor(100, 116, 139);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'italic');
+  doc.text('Certificado con validez únicamente para el expediente interno del módulo.', PW / 2, 280, { align: 'center' });
+  
+  // Extracción robusta anti-corrupción
+  const blob = doc.output('blob');
+  const dataUri = doc.output('datauristring');
+  const base64 = dataUri.split('base64,')[1];
+  
+  return { blob: blob, base64: base64 };
+}
