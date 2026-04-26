@@ -3,23 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preparación de Bordes — EJERCICIOS Y ACTIVIDADES INTERACTIVAS</title>
+  <title>Preparación de Bordes — Actividad Interactiva</title>
   <link rel="stylesheet" href="styles.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,700;0,8..60,900;1,8..60,700&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <div class="app-container">
+
     <header class="header">
-      <h1>EJERCICIOS Y ACTIVIDADES INTERACTIVAS</h1>
-      <p>Preparación de Bordes en Soldadura · ISO 9692-1</p>
+      <div class="title-container">
+        <h1>PREPARACIÓN DE BORDES</h1>
+        <p>Geometría de juntas · UNE-EN ISO 9692 (preparación de juntas para soldadura)</p>
+      </div>
     </header>
 
     <main class="main-content">
 
+      <!-- BARRA DE DATOS DEL ALUMNO -->
       <div class="student-info-bar">
-        <input type="text" id="studentName" placeholder="Nombres y Apellidos..." required>
+        <input type="text" id="studentName" placeholder="Nombre y Apellidos..." required>
         <select id="studentCourse" required>
           <option value="" disabled selected>Selecciona tu curso…</option>
           <option value="1º GM Soldadura">1º GM Soldadura</option>
@@ -32,54 +37,72 @@
         </select>
         <input type="date" id="examDate" required>
       </div>
-      <p id="dateWarning" class="date-warning" style="display:none;">⚠️ La fecha seleccionada no es la de hoy. ¿Estás seguro?</p>
+      <div id="warningsContainer">
+        <p id="dateWarning" class="date-warning" style="display:none;">⚠️ La fecha seleccionada no es la de hoy. ¿Estás seguro?</p>
+      </div>
 
+      <!-- FASE DE ESTUDIO -->
       <section id="studyPanel">
         <div class="panel-header">
           <h2>Fase 1 · Tipos de Preparación de Bordes</h2>
-          <p>Selecciona cada tipo para ver el perfil 3D y su teoría normativa. Arrastra para rotar el modelo.</p>
+          <p>Selecciona cada tipo de junta para estudiar su geometría, parámetros y normativa aplicable.</p>
         </div>
+
         <div class="study-grid">
           <nav class="study-nav">
-            <button class="nav-btn active" data-type="recto">Borde Recto (I)</button>
-            <button class="nav-btn" data-type="v">Bisel en V</button>
-            <button class="nav-btn" data-type="x">Bisel en X (Doble V)</button>
-            <button class="nav-btn" data-type="u">Bisel en U</button>
-            <button class="nav-btn" data-type="j">Bisel en J</button>
-            <button class="nav-btn" data-type="k">Bisel en K</button>
+            <button class="nav-btn active" data-type="i">Bordes rectos (I)</button>
+            <button class="nav-btn" data-type="y">Bisel simple (Y)</button>
+            <button class="nav-btn" data-type="v">V simple</button>
+            <button class="nav-btn" data-type="k">Bisel doble (K)</button>
+            <button class="nav-btn" data-type="x">V doble (X)</button>
+            <button class="nav-btn" data-type="j">J simple</button>
+            <button class="nav-btn" data-type="jd">J doble</button>
+            <button class="nav-btn" data-type="u">U simple</button>
+            <button class="nav-btn" data-type="ud">U doble</button>
+            <button class="nav-btn" data-type="c1">Canto rebordeado simple</button>
+            <button class="nav-btn" data-type="c2">Canto rebordeado doble</button>
           </nav>
-          <div class="study-viewer">
-            <div id="studyCanvas" class="canvas-container"></div>
+
+          <div class="viewer-card">
+            <div class="canvas-container" id="studyCanvas"></div>
             <div class="info-box">
-              <div class="info-badge" id="infoBadge"></div>
-              <h3 id="infoTitle"></h3>
-              <div id="infoParams" class="params-row"></div>
-              <p id="infoDesc"></p>
+              <div class="info-badge" id="infoBadge">ISO 9692-1</div>
+              <h3 id="infoTitle">Cargando...</h3>
+              <p id="infoDesc" style="font-style:italic;color:#64748b;margin-bottom:0.8rem;"></p>
+              <div id="infoParams" style="margin-bottom:1rem;display:flex;flex-wrap:wrap;gap:0.5rem;"></div>
               <div id="infoTheory" class="theory-block"></div>
             </div>
           </div>
         </div>
+
         <div class="start-exam-container">
-          <p class="warning-text">⚠️ Al comenzar la prueba, la teoría desaparecerá. Tendrás 25 segundos por pregunta.</p>
+          <div class="instructions-box">
+            <p>Estudia cada tipo de preparación de bordes: geometría, ángulos de bisel, apertura de raíz y normativa de referencia. <b>Cuando conozcas bien todos los tipos</b>, realiza la prueba de evaluación.</p>
+          </div>
           <button id="btnStartExam" class="btn-primary">Comenzar Prueba</button>
         </div>
       </section>
 
+      <!-- FASE DE EXAMEN -->
       <section id="examPanel" style="display:none;">
         <div class="panel-header">
           <div class="exam-header-row">
             <div>
-              <h2>Fase 2 · Prueba Práctica</h2>
-              <p>Pregunta <span id="currentQuestionNum">1</span> de <span id="totalQuestions">6</span></p>
+              <h2>Fase 2 · Prueba de Evaluación</h2>
+              <p>Pregunta <span id="currentQuestionNum">1</span> de <span id="totalQuestions">10</span></p>
             </div>
             <div id="timerContainer" class="timer-box">⏱ <span id="examTimer">25</span>s</div>
           </div>
-          <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
         </div>
+
         <div class="exam-grid">
-          <div id="examCanvas" class="canvas-container exam-canvas"></div>
+          <div id="examCanvas" class="canvas-container"></div>
+
           <div class="exam-controls">
-            <p class="exam-question" id="examQuestion"></p>
+            <h3 id="examQuestion">Cargando pregunta...</h3>
             <div class="options-grid" id="examOptions"></div>
             <div id="answerFeedback" class="answer-feedback" style="display:none;"></div>
             <button id="btnNextQuestion" class="btn-secondary" style="display:none; margin-top:1rem; width:100%;">Siguiente →</button>
@@ -89,11 +112,12 @@
 
     </main>
 
+    <!-- PANEL DE RESULTADOS -->
     <div id="evaluationPanel" class="eval-panel" style="display:none;">
       <div class="score-ring">
         <svg viewBox="0 0 120 120" width="120" height="120">
           <circle cx="60" cy="60" r="52" fill="none" stroke="#e2e8f0" stroke-width="10"/>
-          <circle id="scoreArc" cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="10"
+          <circle id="scoreArc" cx="60" cy="60" r="52" fill="none" stroke="var(--primary)" stroke-width="10"
             stroke-linecap="round" stroke-dasharray="0 327" transform="rotate(-90 60 60)"
             style="transition: stroke-dasharray 1.2s ease;"/>
         </svg>
@@ -101,11 +125,11 @@
       </div>
       <h2 id="modalTitle">Resultados</h2>
       <p id="modalSummary"></p>
-      <button id="btnEnviarDrive" class="btn-success">Enviar a Google Drive</button>
-      <p id="enviarDriveStatus" style="display:none; font-weight:600; margin-top:.5rem; text-align:center;"></p>
+      <button id="btnEnviarDrive" class="btn-success">Generar PDF y Enviar a Drive</button>
+      <p id="enviarDriveStatus" style="display:none; font-weight:600; margin-top:.75rem; text-align:center; font-size:0.9rem;"></p>
     </div>
+
   </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
